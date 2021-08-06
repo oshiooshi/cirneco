@@ -1,32 +1,24 @@
 import os
 import sys
 import pegtree as pg
-from pegtree import ParseTree
-from pegtree.visitor import ParseTreeVisitor
+from transcompiler import TransCompiler
 
 
-class Transpiler(ParseTreeVisitor):
-    buffer: list
+class Cirneco(TransCompiler):
     parser: object
 
     def __init__(self, grammar_file='cirneco.pegtree'):
-        ParseTreeVisitor.__init__(self)
-        self.buffer = []
+        TransCompiler.__init__(self)
         peg = pg.grammar(grammar_file)
         self.parser = pg.generate(peg)
 
-    def push(self, s: str):
-        self.buffer.append(s)
-
     def generate(self, source: str):
         tree = self.parser(source)
-        self.buffer = []
-        self.visit(tree)
-        return ''.join(self.buffer)
-
+        code = self.visit(tree)
+        return repr(code)
 
 def main(argv):
-    cirneco = Transpiler()
+    cirneco = Cirneco()
     if len(argv) == 0:
         import readline
         try:
@@ -42,7 +34,7 @@ def main(argv):
     else:
         filename = argv[0]
         with open(filename) as f:
-            code = cirneco.generate(f.readlines())
+            code = cirneco.generate(''.join(f.readlines()))
         filename = filename.replace('.py', '.js')
         with open(filename, 'w') as f:
             f.write(code)
