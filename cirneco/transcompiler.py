@@ -2,10 +2,10 @@ import pegtree as pg
 from pegtree import ParseTree
 from pegtree.visitor import ParseTreeVisitor
 
-import pycode 
+import astpy 
 
 class TransCompiler(ParseTreeVisitor):
-    def __init__(self, ast=pycode):
+    def __init__(self, ast=astpy):
         ParseTreeVisitor.__init__(self)
         self.ast = ast
 
@@ -99,8 +99,7 @@ class TransCompiler(ParseTreeVisitor):
         start = self.visit(tree.start) if tree.has('start') else self.ast.PEmpty()
         end = self.visit(tree.end) if tree.has('end') else self.ast.PEmpty()
         step = self.visit(tree.step) if tree.has('step') else self.ast.PEmpty()
-        return self.ast.PIndex(recv, start, end, step)
-
+        return self.ast.PSlice(recv, start, end, step)
 
     # [#GetExpr recv: [#Name 'a'] name: [#Name 'b']]
     def acceptGetExpr(self, tree: ParseTree):
