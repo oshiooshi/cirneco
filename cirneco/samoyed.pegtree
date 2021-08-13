@@ -1,5 +1,5 @@
 /**
- * Cirneco Grammar (Simple Python)
+ * Samoyed Grammar (Simple Python)
  * Authors:
  *   Kimio Kuramitsu (https://github.com/kkuramitsu/)
  * Parser Generator
@@ -34,7 +34,61 @@ INDENT       = '\n' [ \t　]+
 
 /* Statement 文 */
 
-Statement = 
+Statement =
+    / PythonStatement
+    / DNCL2Statement
+
+/* DNCLStatement */
+
+DNCL2Statement =
+    / DNCL2IfStatement
+    / DNCL2ReturnStatement
+    / { Expression #Expression } 
+
+// もし <条件＞ならば、
+
+example DNCL2Statement '''
+もし a==1 ならば :
+    pass
+'''
+
+DNCL2IfStatement = {
+    "もし" 
+    cond: Expression "ならば" ":"
+    then: (Block / SingleBlock)
+    (elif: DNCL2ElifStatements)?
+    (else: DNCL2ElseStatement)?
+    #If
+}
+
+DNCL2ElifStatements = {
+    DNCL2ElifStatement+
+}
+
+DNCL2ElifStatement = (@match(INDENT) / LF) {
+    "そうでなくもし" 
+    cond: Expression "ならば" ":" 
+    then: (Block / SingleBlock)
+    #Elif
+}
+
+DNCL2ElseStatement = (@match(INDENT) / LF) {
+    "そうでなければ" ":" 
+    (Block / SingleBlock)
+    #Else
+}
+
+DNCL2ReturnStatement = {
+    (expr: (Expressions / Expression) )? 
+    "を返す"
+    #Return
+} 
+
+example DNCL2Statement,Statement 1を返す
+
+/* PythonStatement */
+
+PythonStatement = 
     / ClassDecl
     / ImportDecl
     / FromImportDecl
@@ -47,7 +101,6 @@ Statement =
     / TryStatement
     / WithStatement 
     / AssignmentStatement
-    / { Expression #Expression } 
 
 
 Block = {
@@ -106,13 +159,6 @@ ClassDecl = {
 
 /* 関数定義 */
 
-example Statement '''
-@clicked(A)
-def succ(x: int):
-    #hoge
-    return x+1
-'''
-
 FuncDecl = {
     (deco: Decorator)?
     (async: "async")?
@@ -141,10 +187,6 @@ FuncParam = {
     ( "=" value: Expression)?
     #ParamDecl
 }
-
-example Expression lambda: print(1)
-example Expression lambda x: print(x)
-example Expression lambda x,y: print(x,y)
 
 LambdaExpression = {
     "lambda" 
@@ -200,27 +242,6 @@ RaiseStatement = {
 
 /* if文 */
 
-example Statement '''
-if A == 1 :
-    print(A)
-    A = Ball()
-else:
-    print(A, B)
-    
-    A = 2
-'''
-
-example Statement '''
-if A :
-    A
-elif B :
-    B
-elif C :
-    C
-else :
-    D
-'''
-
 AssertStatement = {
     "assert" 
     cond: Expression 
@@ -256,11 +277,6 @@ ElseStatement = (@match(INDENT) / LF) {
 
 /* for文 (* *) */
 
-example Statement '''
-for x in [1,2,3]:
-    print(x)
-    print(x+1)
-'''
 
 ForStatement = {
     "for" 
@@ -329,8 +345,6 @@ AssignmentStatement =
     / SelfAssignment
     / VarTypeDecl
 
-example Statement a,b = b,a
-
 MultiAssignment = {
     left: { LeftHand ("," LeftHand)+ }
     "=" 
@@ -349,10 +363,6 @@ Expressions = {
     Expression ("," Expression)+ 
     #Tuple
 }
-
-example Statement a = 1
-example Statement a[0] = 1
-example Statement A += 1
 
 VarDecl = {
     (anno: Decorator)?
@@ -405,9 +415,6 @@ DeleteStatement = {
 }
 
 /* Expression */
-
-example Expression not 1 == 2
-example Expression not 1 == 2 and 1 > 3
 
 Expression = 
     / LambdaExpression
@@ -508,10 +515,6 @@ _SliceExpr = {
     #SliceExpr
 }
 
-example Expression a[1:2]
-example Expression a[1:]
-example Expression a[:2]
-
 Arguments = {
 	( !(NAME _ '=' !'=') Expression)? 
     ( "," __ !(NAME _ '=' !'=') Expression )*
@@ -537,22 +540,7 @@ NamedArgument = {
     #KeyValue
 }
 
-example Expression Circle(500, 500)
-example Expression Circle(500, 500, clicked=cat_clicked)
-example Expression Circle(clicked=1, move=1)
-
 /* Primary */
-
-example Primary, Expression (1,2) //
-example Primary, Expression (1)
-example Primary, Expression (1,)
-example Primary, Expression [1,2,3]
-example Primary, Expression '''
-{ 
-    name: 'naruto', 
-    "age": 17,
-}
-'''
 
 Primary =
     / GroupExpr
@@ -610,7 +598,7 @@ Identifier = {
 } _
 
 UIdentifier = {
-    (KATA / KANJI / HIRA / '_')+ W*
+    (KATA / KANJI ) (KATA / KANJI / HIRA / W)* 
     #UName
 } _
 
@@ -627,8 +615,6 @@ Constant =
 	/ TrueExpr
 	/ FalseExpr
 	/ NullExpr
-
-example Expression f'{a}+{1}'
 
 FormatString = [Ff] (
     '\'\'\'' { FormatContent3* #Format } '\'\'\''
@@ -736,43 +722,4 @@ TENIWOHA = [はがもをとにへまか]
 ";" = ([;；] _)+
 ":" = [:：] _
 "_" = [_＿]
-
-example Source '''
-from puppy import *
-def cat_clicked(cat): print('Meaw')
-a=1;b=1
-'''
-
-
-example Statement '''
-for _ in range(100,10):
-    print(_)
-'''
-
-example Expression [x for x in range(10) if x > 0 ]
-example Expression '''
-[(x,y) for x in range(10) if x > 0 
-       for y in range(10) if 0 < x < y  ]
-'''
-
-example Expression [0] * 3
-example Expression print(*ns)
-
-example Statement '''
-try: A; A2
-except B as e:
-    B
-except C as e:
-    C
-else:
-    D
-finally:
-    E
-'''
-
-example Source '''
-urllib.parse.unquote(url).decode('utf8') # decode url `url` from UTF-16 code to UTF-8 code
-del lst[:] # empty a list `lst`
-del lst1[:] # empty a list `lst`
-'''
 
