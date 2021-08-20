@@ -1,0 +1,791 @@
+/**
+ * Samoyed Grammar (Simple Python)
+ * Authors:
+ *   Kimio Kuramitsu (https://github.com/kkuramitsu/)
+ * Parser Generator
+ * pegtree pasm -g puppy.tpeg -f ts > parser.ts
+ */
+ 
+/* Top Level */
+
+Source = EOL? {
+    (Statement _SKIP 
+    (";" Statement _SKIP )* ";"? EOL)*
+    #Source
+} EOF
+
+/* Code Layout */
+
+EOF          = !.
+LF           = '\n' / EOF
+S            = [ \t\u200B\v\r　] / '\\\n'
+
+_            = ( S / BLOCKCOMMENT / LINECOMMENT )*
+_A           = ( S / BLOCKCOMMENT / LINECOMMENT )*
+__           = ( S / '\n' / BLOCKCOMMENT / LINECOMMENT )*
+SPC          = ( S / BLOCKCOMMENT / LINECOMMENT )+
+_SKIP         = ('\n' _ &'\n')*
+
+BLOCKCOMMENT = '/*' ( !'*/' . )* '*/'
+LINECOMMENT  = [#＃] ( !LF . )*
+
+EOL          = _ LF (_ LF)*
+INDENT       = '\n' [ \t　]+
+
+/* Statement 文 */
+
+Statement =
+    / PythonStatement
+    / DNCL2Statement
+
+
+
+/* DNCL2Statement */
+
+DNCL2Statement =
+    / DNCL2IfStatement
+    / DNCL2ReturnStatement
+    / DNCL2PrintStatement
+    / DNCL2ForStatement
+    / DNCL2WhileStatement
+    / { Expression #Expression } 
+
+
+// 表示する("")
+
+DNCL2PrintStatement = {
+    #QString 
+    '"'
+    (expr: (Expressions / Expression) )? 
+    '"'
+    #Expressions
+}
+/*
+DNCL2PrintStatement = {
+    "表示する" '("'
+    (expr: (Expressions / Expression) )? 
+    '")'
+    #Expressions
+}
+*/
+
+
+// 順次繰り返し　3パターン
+// つちのこのドキュメントからパク
+// <変数> を <初期値> から <終了値> まで <増分> ずつ増やしながら繰り返す: <処理>
+// <変数> を <初期値> から <終了値> まで <増分> ずつ減らしながら繰り返す: <処理>
+// <列挙可能なオブジェクト> の要素 <変数> について繰り返す: <処理> 
+
+
+DNCL2ForStatement = {
+    each: Names 
+    "を"
+    list: Expression "から" Expression "まで" Expression "ずつ増やしながら繰り返す" ":"
+    body: (Block / SingleBlock)
+    (else: DNCL2ElseStatement)?
+    #For
+}
+
+/*
+ForStatement = {
+    "for" 
+    each: Names 
+    "in" 
+    list: Expression ":" 
+    body: (Block / SingleBlock)
+    (else: ElseStatement)?
+    #For
+}
+*/
+
+
+// 条件繰り返し
+// <条件> の間繰り返す: <処理>
+
+DNCL2WhileStatement = {
+    cond: Expression "の間繰り返す" ":"
+    body: (Block / SingleBlock)
+    (else: DNCL2ElseStatement)?
+    #While
+}
+
+// もし <条件＞ならば、
+
+/*
+example DNCL2Statement '''
+もし a==1 ならば :
+    pass
+'''
+*/
+
+DNCL2IfStatement = {
+    "もし" 
+    cond: Expression "ならば" ":"
+    then: (Block / SingleBlock)
+    (elif: DNCL2ElifStatements)?
+    (else: DNCL2ElseStatement)?
+    #If
+}
+
+DNCL2ElifStatements = {
+    DNCL2ElifStatement+
+}
+
+DNCL2ElifStatement = (@match(INDENT) / LF) {
+    "そうでなくもし" 
+    cond: Expression "ならば" ":" 
+    then: (Block / SingleBlock)
+    #Elif
+}
+
+DNCL2ElseStatement = (@match(INDENT) / LF) {
+    "そうでなければ" ":" 
+    (Block / SingleBlock)
+    #Else
+}
+
+DNCL2ReturnStatement = {
+    (expr: (Expressions / Expression) )? 
+    "を返す"
+    #Return
+} 
+
+example DNCL2Statement,Statement 1を返す
+
+/* PythonStatement */
+
+PythonStatement = 
+    / ClassDecl
+    / ImportDecl
+    / FromImportDecl
+    / FuncDecl
+    / IfStatement
+    / ForStatement
+    / WhileStatement
+    / ControlStatement
+    / AssertStatement
+    / TryStatement
+    / WithStatement 
+    / AssignmentStatement
+
+
+Block = {
+    @scope(
+        @symbol(INDENT) (Statement (";" Statement)* ";"? _SKIP / _SKIP &EOL)
+        (@match(INDENT) (Statement (";" Statement)* ";"? _SKIP / _SKIP &EOL) )*
+    )
+    #Block
+}
+
+SingleBlock = {
+    Statement 
+    (";" Statement)* 
+    ";"? _ &EOL
+    #Block
+} / {
+    _ EOF
+    #Empty
+}
+
+/* import */
+
+ImportDecl = {
+    "import" 
+    name: ModuleName 
+    ("as" alias: Name)?
+    #ImportDecl
+}
+
+FromImportDecl = {
+    "from" 
+    name: ModuleName 
+    "import"
+    names: ( Names / Wildcard )
+    #FromDecl
+}
+
+ModuleName = {
+    [A-Za-z_] (W / '.')*
+    #ModuleName
+} _
+
+// for (a,b) in A:
+Names = { "("? Name (","  ([()] _)? Name ([()] _)? )* }
+Wildcard = { '*' } _
+
+/* class 定義 */
+
+ClassDecl = {
+    "class" 
+    name: Name 
+    ("(" extends: Names ")")? ":" 
+    body: (Block / Statement)
+    #ClassDecl
+}
+
+/* 関数定義 */
+
+FuncDecl = {
+    (deco: Decorator)?
+    (async: "async")?
+    "def" 
+    name: Name 
+    params: FuncParams ("->" type: Type)? ":" 
+    body: (Block / Statement)
+    #FuncDecl
+}
+
+Decorator = {
+    '@'
+    name: ModuleName
+    ("(" params: Arguments ")")? __
+    #Decorator
+}
+
+FuncParams = {
+    "(" FuncParam? ( "," __ FuncParam )* __ ")"
+    #FuncParam
+}
+
+FuncParam = {
+    name: Name 
+    ( ":" type: Type)?
+    ( "=" value: Expression)?
+    #ParamDecl
+}
+
+LambdaExpression = {
+    "lambda" 
+    (params: LambdaParams)? ":"
+    body: (Block / Expression)
+    #FuncExpr
+}
+
+LambdaParams = {
+    LambdaFuncParam? ( "," LambdaFuncParam )* _
+    #FuncParam
+}
+
+LambdaFuncParam = {
+    name: Name 
+    ( "=" value: Expression)?
+    #ParamDecl
+}
+
+
+/* control statement */
+
+ControlStatement =
+    / ReturnStatement
+    / BreakStatement
+    / ContinueStatement
+    / PassStatement
+    / YieldStatement
+    / RaiseStatement
+
+ReturnStatement = {
+    "return"
+    (expr: (Expressions / Expression) )?
+    #Return
+} 
+
+YieldStatement = { 
+    "yield" 
+    (expr: (Expressions / Expression) )?
+    #Yield 
+} 
+
+PassStatement =  { "pass" #Pass }
+BreakStatement = { "break" #Break }
+ContinueStatement = { "continue" #Continue }
+
+RaiseStatement = {
+    "raise"
+    expr: Expression
+    ("from" from: Expression)?
+    #Raise
+} 
+
+/* if文 */
+
+AssertStatement = {
+    "assert" 
+    cond: Expression 
+    ("," expr: Expression)?
+    #Assert
+}
+
+IfStatement = {
+    "if" 
+    cond: Expression ":" 
+    then: (Block / SingleBlock)
+    (elif: ElifStatements)?
+    (else: ElseStatement)?
+    #If
+}
+
+ElifStatements = {
+    ElifStatement+
+}
+
+ElifStatement = (@match(INDENT) / LF) {
+    "elif" 
+    cond: Expression ":" 
+    then: (Block / SingleBlock)
+    #Elif
+}
+
+ElseStatement = (@match(INDENT) / LF) {
+    "else" ":" 
+    (Block / SingleBlock)
+    #Else
+}
+
+/* for文 (* *) */
+
+
+ForStatement = {
+    "for" 
+    each: Names 
+    "in" 
+    list: Expression ":" 
+    body: (Block / SingleBlock)
+    (else: ElseStatement)?
+    #For
+}
+
+WhileStatement = {
+    "while"
+    cond: Expression ":" 
+    body: (Block / SingleBlock)
+    (else: ElseStatement)?
+    #While
+}
+
+/* try */
+
+TryStatement = {
+    "try" ":" 
+    body: (Block / SingleBlock)
+    (except: ExceptStatements)?
+    (else: ElseStatement)?
+    (finally: FinallyStatement)?
+    #Try
+}
+
+ExceptStatements = {
+    ExceptStatement+
+}
+
+ExceptStatement = (@match(INDENT) / LF) {
+    "except" 
+    (cond: Name ("as" as: Name)?)? ":" 
+    body: (Block / SingleBlock)
+    #Except
+}
+
+FinallyStatement = (@match(INDENT) / LF) {
+    "finally" ":" 
+    (Block / SingleBlock)
+    #Finally
+}
+
+WithStatement = {
+    "with" expr: Expression 
+    "as" name: Name
+    ("," { Expression "as" Name #With } )*   // FIXME
+    ":" 
+    body: (Block / SingleBlock)
+    #With
+}
+
+/* Assignment */
+
+AssignmentStatement =
+    / GlobalStatement
+    / NonLocalStatement
+    / DeleteStatement
+    / MultiAssignment
+    / VarDecl
+    / Assignment
+    / SelfAssignment
+    / VarTypeDecl
+
+MultiAssignment = {
+    left: { LeftHand ("," LeftHand)+ }
+    "=" 
+    right: (Expressions / Expression)
+    #MultiAssignment
+}
+
+LeftHand =
+    Name (
+	     { recv:^ "." name: Name #GetExpr }
+    	/ { recv:^ "[" index: Expression "]" #IndexExpr }
+        / _SliceExpr
+    )*
+
+Expressions = {
+    Expression ("," Expression)+ 
+    #Tuple
+}
+
+VarDecl = {
+    (anno: Decorator)?
+    name: Name
+    (':' _  type: Type)?
+    "=" 
+    expr: Expression
+    #VarDecl
+}
+
+VarType = { 'const'/'let'/'var' } !W _
+
+VarTypeDecl = {
+    name: Name
+    ':' _  type: Type
+    #VarTypeDecl
+}
+
+Assignment = {
+    left: LeftHand
+    ":"? "=" 
+    right: Expression
+    #Assignment
+}
+
+SelfAssignment = {
+    left: LeftHand
+    name: SelfAssignOp
+    right: Expression
+    #SelfAssignment
+}
+
+SelfAssignOp = {
+    ('<<' / '>>' / '**' / '//' / '-' / [+=*/%&|^＋＝＊／％＆｜＾×÷]) ('='/'＝')
+} _
+
+GlobalStatement = {
+    "global" Names
+    #Global
+} 
+
+NonLocalStatement = {
+    "nonlocal" Names
+    #NonLocal
+}
+
+DeleteStatement = {
+    "del" expr: LeftHand
+    #Delete
+}
+
+/* Expression */
+
+Expression = 
+    / LambdaExpression
+    / Operator (_IfExpr / _ForExpr)?
+
+_IfExpr = {
+    then:^  
+    "if" cond: Expression 
+    "else" else: Expression 
+    #IfExpr 
+}
+
+_ForExpr = {
+    append:^
+    ("for" ForExpr)+
+    #ForListExpr
+}
+
+ForExpr = {
+    each: Names __
+    "in"
+    list: Expression __
+    ("if" cond: Expression)? __
+    #ForExpr
+}
+
+//BUGS = [)\]} ）］｝　]*
+
+Operator =
+	AndExpr (left:^ { OR _ right: AndExpr #Or })*
+
+OR = 'or' !W / '||' / '｜｜'
+
+AndExpr =
+	NotExpr (left:^ { AND _ right: NotExpr #And })*
+
+AND = 'and' !W / '&&' / '＆＆'
+
+NotExpr =
+	{ NOT _ NotExpr #Not } / EqExpr
+
+NOT = 'not' !W / '!' / '！'
+
+EqExpr =
+	SumExpr (left:^ { name: { EQ #Name } _ right: SumExpr #Infix })*
+
+EQ =
+	/ '==' '='? / '＝＝' 
+	/ '!=' '='? / '！＝' / '≠'
+	/ '<=' !'=' / '＜＝' / '≦'
+	/ '>=' !'=' / '＞＝' / '≧'
+	/ '<'  !'<' / '＜' !'＜'
+	/ '>'  !'>' / '＞' !'＞'
+    / '=' !'='  / '＝' !'＝'
+    / ':=' !'='
+    / ('not' !W _)? 'in' !W
+    / 'is' !W (_ 'not' !W)?
+
+SumExpr =
+	ProdExpr (left:^ { name: { SUM #Name } _ right: ProdExpr #Infix })*
+
+SUM = [+\-|＋ー｜]
+
+ProdExpr =
+	PowExpr (left:^ { name: { PROD #Name } _ right: PowExpr #Infix })*
+
+PROD =
+    / '//' / '<<' / '>>' / '／／' / '＜＜' / '＞＞'
+	/ [*/%^&＊・／％＾＆×÷]
+
+PowExpr = UnaryExpr (left:^ { name: { '**' #Name } _ right: UnaryExpr #Infix })*
+
+UnaryExpr
+	= { name: {PRE #Name } _ expr: UnaryExpr #Unary }
+    / SuffixExpr
+
+PRE = [+\-~＋ー〜]
+
+SuffixExpr =
+	Primary (
+	    recv:^ { "." name: Name "(" params: Arguments __ ")" #MethodExpr }
+	    / recv:^ { "." name: Name #GetExpr }
+	    / name:^ { "(" params: Arguments __ ")"  #ApplyExpr }
+	    / recv:^ { "[" index: Expression "]" #IndexExpr }
+        / _SliceExpr
+	)*
+
+_SliceExpr = { 
+    recv:^
+    "[" 
+    (start: Expression)? (":" (end: Expression)? )?
+    (":" (step: Expression)? )?  
+    (
+        "," (start2: Expression)? (":" (end2: Expression)?)?
+        (":" (step2: Expression)? )?  
+    )?
+    "]" 
+    #SliceExpr
+}
+
+Arguments = {
+	( !(NAME _ '=' !'=') Expression)? 
+    ( "," __ !(NAME _ '=' !'=') Expression )*
+    (ListArgument / NamedArguments)?
+    #Arguments
+}
+
+ListArgument = {
+    '*' '*'? _ Expression
+    #ListArgument
+}
+
+NamedArguments = {
+    ("," __ )?
+    NamedArgument ( "," __ NamedArgument )*
+    #Option
+}
+
+NamedArgument = {
+    name: Name
+    !'==' "="  
+    value: Expression
+    #KeyValue
+}
+
+/* Primary */
+
+Primary =
+    / GroupExpr
+    / ListExpr {^ "*" Expression #Mul }?
+    / DataExpr
+    / Constant
+    / Name
+
+GroupExpr = 
+    / { "(" Expression ")" #Group }
+    / { "(" Expression ("," __ Expression)*  ","? __ ")" #Tuple }
+
+ListExpr = { "[" (Expression ("," __ Expression)* )? ","?  __ "]" #List }
+
+DataExpr = 
+    / { "{" (KeyValue ("," __ KeyValue)*)? ","? __ "}" #Data }
+    / { "{" (Expression ("," __ Expression)* )? ","?  __ "}" #Set }
+
+DELIM = [.:+\-*/%<>=!(){}[\],\n]
+
+KeyValue = {
+	name: (Name /StringExpr / CharExpr / Expression)
+	":"
+	value: Expression
+	#KeyValue
+}
+
+/* Type */
+
+"[<" = [<[［＜] _
+">]" = [\]>］＞] _
+"->" = [=-] '>' _
+
+Type = FuncType {^ ("|" Type)+ #UnionType }?
+
+FuncType = PrimaryType {^ "->" Type #FuncType }*
+
+PrimaryType =
+    / { "(" (Type ("," Type)*)? ")" #TupleType } _ParamType*
+    / { NAME #BaseType } _ _ParamType*
+
+_ParamType = {^ "[<" (Type ("," Type)*)? ">]" #ParamType }
+
+/* Name, Identifier */
+
+Name = 
+    / Identifier 
+    / UIdentifier
+
+NAME = [A-Za-z_] W*
+
+Identifier = {
+    NAME
+    #Name
+} _
+
+UIdentifier = {
+    (KATA / KANJI ) (KATA / KANJI / HIRA / W)* 
+    #UName
+} _
+
+W = [A-Za-z0-9_]
+
+/* Literal */
+
+Constant =
+    / FormatString
+    / LongString
+	/ StringExpr {^ "*" Expression #Mul}?
+	/ CharExpr
+	/ Number
+	/ TrueExpr
+	/ FalseExpr
+	/ NullExpr
+
+FormatString = [Ff] (
+    '\'\'\'' { FormatContent3* #Format } '\'\'\''
+    / '\'' { FormatContent1* #Format } '\''
+    / '"""' { FormatContent3D* #Format } '"""'
+    / '"' { FormatContent1D* #Format } '"' ) _
+
+FormatContent3 =
+    '{' Expression FORMAT_OPTION? '}' / { (!'\'\'\'' !'{' .)* #StringPart }
+
+FormatContent1 =
+    '{' Expression FORMAT_OPTION? '}' / { (!'\'' !'{' .)* #StringPart }
+
+FormatContent3D =
+    '{' Expression FORMAT_OPTION? '}' / { (!'"""' !'{' .)* #StringPart }
+
+FormatContent1D =
+    '{' Expression FORMAT_OPTION? '}' / { (!'"' !'{' .)* #StringPart }
+
+FORMAT_OPTION = ':' (!'}' .)*
+
+LongString = 
+    '\'\'' { '\'' ( ESCAPE / ![\\'] . / !'\'\'\'' '\'' )* '\'' #MultiString } '\'\'' _
+    / '""' { '"' ( ESCAPE / ![\\"] . / !'"""' '"' )* '"' #MultiString } '""' _
+
+StringExpr = 
+    / { '"' STRING* '"' #QString } _
+    / DQ { ZSTRING* #ZString } DQ _
+
+CharExpr = 
+    / { '\'' CHAR* '\'' #QString } _
+    / SQ {  ZCHAR* #ZChar } SQ _
+
+SQ = ['’‘＇]
+DQ = ["”“＂]
+STRING = ESCAPE / ![\"\n\\] .
+CHAR   = ESCAPE / !['\n\\] .
+ZSTRING = ESCAPE / !DQ ![\n\\] .
+ZCHAR   = ESCAPE / !SQ ![\n\\] .
+
+ESCAPE =
+	'\\' ['\"\\bfnrt]
+	/ '\\' [0-3] [0-7] [0-7]
+    / '\\' [0-7] [0-7]
+    / '\\' [0-7]
+	/ '\\' [uU] HEX HEX HEX HEX
+	/ '\\' [xX] HEX HEX
+
+/* Number,Unit */
+
+Number = FloatExpr / IntExpr
+
+IntExpr = {
+	(HEXADECIMAL / BINARY / DECIMAL )
+	#Int
+} _
+
+DECIMAL = !'_' DIGIT ( DIGIT )*
+HEXADECIMAL = '0' [xX] HEX ( '_'* HEX )*
+BINARY = '0' [bB] [01] ( '_'* [01] )*
+DIGIT = [0-9０-９_]
+HEX = [a-fA-F0-9]
+LONG_SUFFIX = [lL]
+
+FloatExpr = {
+	FLOAT #Double
+} _
+
+FLOAT = !'_' (
+	FRACTION EXPONENT? / DIGIT+ EXPONENT
+)
+
+FRACTION =
+	/ DIGIT* "." !'_' DIGIT+
+    / DIGIT DIGIT* "." !'.'
+
+EXPONENT =
+	[eE] [+\-]? !'_' DIGIT+
+
+/* Const */
+
+TrueExpr  = { [Tt] 'rue' #True } _
+FalseExpr = { [Ff] 'alse' #False } _
+NullExpr  = { ('None' / 'null') #Null } _
+
+/* Character */
+
+HIRA = [ぁ-ん]
+KATA = [ァ-ヶ]
+KANJI = [㐀-䶵一-龠々〇〻ー]
+TENIWOHA = [はがもをとにへまか]
+
+//W     = [ァ-ヶ㐀-䶵一-龠々〇〻Ａ-Ｚー]
+//DIGIT = [０-９]
+
+"{" = [{｛] __
+"}" = [}｝] _
+"[" = [[［] __
+"]" = [\]］] _
+"(" = [(（] __
+")" = [)）] _
+"=" = [=＝] ![=＝] _
+"." = [.．。] _
+"," = [,，、] _
+";" = ([;；] _)+
+":" = [:：] _
+"_" = [_＿]
+
