@@ -1,5 +1,5 @@
 /**
- * Samoyed Grammar (Simple Python)
+ * Samoyed Grammar ()
  * Authors:
  *   Kimio Kuramitsu (https://github.com/kkuramitsu/)
  * Parser Generator
@@ -38,19 +38,85 @@ Statement =
     / PythonStatement
     / DNCL2Statement
 
-/* DNCLStatement */
+/* DNCL2Statement */
 
 DNCL2Statement =
     / DNCL2IfStatement
+    / DNCL2ForRangeStatement
+    / DNCL2ForStatement
+    / DNCL2WhileStatement
     / DNCL2ReturnStatement
+    / DNCL2PrintStatement
     / { Expression #Expression } 
+
+
+// 表示する("")
+
+DNCL2PrintStatement = {
+    #QString 
+    '"'
+    (expr: (Expressions / Expression) )? 
+    '"'
+    #Expressions
+}
+
+/*
+DNCL2PrintStatement = {
+    "表示する" '("'
+    (expr: (Expressions / Expression) )? 
+    '")'
+    #Expressions
+}
+*/
+
+// 順次繰り返し　3パターン
+// つちのこのドキュメントからパク
+// <変数> を <初期値> から <終了値> まで <増分> ずつ増やしながら繰り返す: <処理>
+// <変数> を <初期値> から <終了値> まで <増分> ずつ減らしながら繰り返す: <処理>
+// <列挙可能なオブジェクト> の要素 <変数> について繰り返す: <処理> 
+
+DNCL2ForRangeStatement = {
+    each: Name "を"
+    start: Expression "から" 
+    end: Expression "まで" 
+    step: Expression "ずつ" "増やしながら" "繰り返す" ":"
+    body: (Block / SingleBlock)
+    #ForRange
+} / {   // 減少は別のタグ#ForRangeDecにする
+    each: Name "を"
+    start: Expression "から" 
+    end: Expression "まで" 
+    step: Expression "ずつ" "減らしながら" "繰り返す" ":"
+    body: (Block / SingleBlock)
+    #ForRangeDec
+}
+
+DNCL2ForStatement = {
+    list: Expression "の要素"
+    each: Names "について"
+    "繰り返す" ":"
+    body: (Block / SingleBlock)
+    #ForRange
+}
+
+// 条件繰り返し
+// <条件> の間繰り返す: <処理>
+
+DNCL2WhileStatement = {
+    cond: Expression "の間" "繰り返す" ":"
+    body: (Block / SingleBlock)
+    (else: DNCL2ElseStatement)?
+    #While
+}
 
 // もし <条件＞ならば、
 
+/*
 example DNCL2Statement '''
 もし a==1 ならば :
     pass
 '''
+*/
 
 DNCL2IfStatement = {
     "もし" 
@@ -84,8 +150,6 @@ DNCL2ReturnStatement = {
     #Return
 } 
 
-example DNCL2Statement,Statement 1を返す
-
 /* PythonStatement */
 
 PythonStatement = 
@@ -94,6 +158,7 @@ PythonStatement =
     / FromImportDecl
     / FuncDecl
     / IfStatement
+    / ForRangeStatement
     / ForStatement
     / WhileStatement
     / ControlStatement
@@ -275,7 +340,23 @@ ElseStatement = (@match(INDENT) / LF) {
     #Else
 }
 
-/* for文 (* *) */
+/* for文 */
+
+ForRangeStatement = {
+    "for" 
+    each: Name 
+    "in" 
+    "range" "("
+    start: Expression 
+    ("," end: Expression)?
+    ("," step: Expression)?
+    ")" ":" 
+    body: (Block / SingleBlock)
+    (else: ElseStatement)?
+    #ForRange
+}
+
+example Statement for x in range(1,2,10): pass
 
 
 ForStatement = {

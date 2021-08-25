@@ -1,4 +1,3 @@
-import pegtree as pg
 from pegtree import ParseTree
 from pegtree.visitor import ParseTreeVisitor
 
@@ -10,7 +9,7 @@ class TransCompiler(ParseTreeVisitor):
         self.ast = ast
 
     def acceptSource(self, tree: ParseTree):
-        return self.visit(tree[0]) #最初の子ノードを処理する
+        return self.acceptBlock(tree)
 
     # [#Expression e]
     def acceptExpression(self, tree: ParseTree):
@@ -94,7 +93,7 @@ class TransCompiler(ParseTreeVisitor):
         return self.ast.PIndex(recv, right)
 
     # [#SliceExpr recv: [#Name 'a']start: [#Int '1']]
-    def acceptIndexExpr(self, tree: ParseTree):
+    def acceptSliceExpr(self, tree: ParseTree):
         recv = self.visit(tree.recv)
         start = self.visit(tree.start) if tree.has('start') else self.ast.PEmpty()
         end = self.visit(tree.end) if tree.has('end') else self.ast.PEmpty()
@@ -110,7 +109,7 @@ class TransCompiler(ParseTreeVisitor):
     # [#ApplyExpr name: [#Name 'print']params: [#Arguments '']]
     def acceptApplyExpr(self, tree: ParseTree):
         func = self.visit(tree.name)
-        params = [self.visit(x) for x in self.params]
+        params = [self.visit(x) for x in tree.params]
         return self.ast.PApp(func, *params)
 
     # [#MethodExpr recv: [#Name 'e']name: [#Name 'print']params: [#Arguments '']]
@@ -118,5 +117,19 @@ class TransCompiler(ParseTreeVisitor):
         recv = self.visit(tree.recv)
         name = str(tree.name)
         func = self.ast.PField(recv, name)
-        params = [self.visit(x) for x in self.params]
+        params = [self.visit(x) for x in tree.params]
         return self.ast.PApp(func, *params)
+
+    def acceptIf(self, tree: ParseTree):
+        cond = self.visit(tree.cond)
+        then = self.visit(tree.then)
+        if tree.has('else'):
+            return self.ast.PIf(cond, then, tree.get('else'))
+        else:
+            return self.ast.PIf(cond, then)
+
+    def acceptBlock(self, tree: ParseTree):
+        return self.ast.PBlock(*[self.visit(t) for t in tree])
+
+    def acceptPass(self, tree: ParseTree):
+        return self.ast.PStatement('pass')
