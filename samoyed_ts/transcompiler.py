@@ -1,4 +1,3 @@
-import pegtree as pg
 from pegtree import ParseTree
 from pegtree.visitor import ParseTreeVisitor
 
@@ -10,7 +9,7 @@ class TransCompiler(ParseTreeVisitor):
         self.ast = ast
 
     def acceptSource(self, tree: ParseTree):
-        return self.visit(tree[0]) #最初の子ノードを処理する
+        return self.ast.PSource(*[self.visit(t) for t in tree])
 
     # [#Expression e]
     def acceptExpression(self, tree: ParseTree):
@@ -60,7 +59,14 @@ class TransCompiler(ParseTreeVisitor):
     # [#Name 'a']
     def acceptName(self, tree: ParseTree):
         return self.ast.PVar(str(tree))
+
+
+    def acceptUName(self, tree: ParseTree):
+        if str(tree) == "表示する":
+            tree = "print"
+        return self.ast.PVar(str(tree))
     
+
     #[#VarDecl name: [#Name 'x'] expr: [#QString '"a"']]
     def acceptVarDecl(self, tree: ParseTree):
         left = self.visit(tree.name)
@@ -94,7 +100,7 @@ class TransCompiler(ParseTreeVisitor):
         return self.ast.PIndex(recv, right)
 
     # [#SliceExpr recv: [#Name 'a']start: [#Int '1']]
-    def acceptIndexExpr(self, tree: ParseTree):
+    def acceptSliceExpr(self, tree: ParseTree):
         recv = self.visit(tree.recv)
         start = self.visit(tree.start) if tree.has('start') else self.ast.PEmpty()
         end = self.visit(tree.end) if tree.has('end') else self.ast.PEmpty()
@@ -110,7 +116,7 @@ class TransCompiler(ParseTreeVisitor):
     # [#ApplyExpr name: [#Name 'print']params: [#Arguments '']]
     def acceptApplyExpr(self, tree: ParseTree):
         func = self.visit(tree.name)
-        params = [self.visit(x) for x in self.params]
+        params = [self.visit(x) for x in tree.params]
         return self.ast.PApp(func, *params)
 
     # [#MethodExpr recv: [#Name 'e']name: [#Name 'print']params: [#Arguments '']]
@@ -118,5 +124,49 @@ class TransCompiler(ParseTreeVisitor):
         recv = self.visit(tree.recv)
         name = str(tree.name)
         func = self.ast.PField(recv, name)
-        params = [self.visit(x) for x in self.params]
+        params = [self.visit(x) for x in tree.params]
         return self.ast.PApp(func, *params)
+
+    def acceptIf(self, tree: ParseTree):
+        cond = self.visit(tree.cond)
+        then = self.visit(tree.then)
+        if tree.has('else'):
+            return self.ast.PIf(cond, then, tree.get('else'))
+        else:
+            return self.ast.PIf(cond, then)
+
+    def acceptBlock(self, tree: ParseTree):
+        return self.ast.PBlock(*[self.visit(t) for t in tree])
+
+    def acceptPass(self, tree: ParseTree):
+        return self.ast.PStatement('pass')
+
+    def acceptNLP(self, tree: ParseTree):
+        ss = []
+        vars = {}
+        index = 0
+        for t in tree:
+            tag = t.getTag()
+            if tag == 'NLPChunk' or tag == 'UName':
+                ss.append(str(t))
+            elif tag == 'Block':
+                block = self.visit(t)
+                return self.ast.NLPStatement(''.join(ss), vars, (block,))
+            else:
+                key = ('ABCDEFGHIJKLMN')[index]
+                key = f'<{key}>'
+                vars[key] = '('+str(fix(t))+')'
+                ss.append(key)
+                index += 1
+        return self.ast.NLPStatement(''.join(ss), vars)
+
+
+def fix(tree):
+    a = [tree.epos_]
+    for t in tree:
+        fix(t)
+        a.append(t.epos_)
+    for key in tree.keys():
+        a.append(fix(tree.get(key)).epos_)
+    tree.epos_ = max(a)
+    return tree
