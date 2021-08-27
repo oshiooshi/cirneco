@@ -228,8 +228,8 @@ class NMT(object):
             self.transformer,  src, src_mask, max_len=num_tokens + 5, beamsize=5, start_symbol=SOS_IDX).flatten()
         return " ".join(self.tgt_vocab.lookup_tokens(list(tgt_tokens.cpu().numpy()))).replace("<sos>", "").replace("<eos>", "")
 
-
-nmt = NMT()
-nmt.load('./all-model.pt')
-pred = nmt.translate('もし<A>が偶数のとき')
-print('pred:', pred)
+if __name__ == '__main__':
+    nmt = NMT()
+    nmt.load('./all-model.pt')
+    pred = nmt.translate('もし<A>が偶数のとき')
+    print('pred:', pred)

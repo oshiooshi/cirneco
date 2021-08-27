@@ -310,6 +310,28 @@ class PForRange(PExpr):
         buffers.append('): ')
         self.params[-1].emit(env, buffers)
 
+try:
+    import nmt
+    model = nmt.NMT()
+    model.load('./all-model.pt')
+    print('Programming AI is supported')
+
+    class NLPStatement(PExpr):
+
+        def __init__(self, statement, vars, block=EMPTY):
+            PExpr.__init__(self, statement, block)
+            self.vars = vars
+
+        def emit(self, env, buffers):
+            s = model.translate(self.name).strip()
+            for key in self.vars.keys():
+                s = s.replace(key, self.vars[key])
+            buffers.append(s + "#"+self.name)
+            if len(self.params) == 1: #block
+                self.params[0].emit(env, buffers)
+
+except Exception as e:
+    print('Programming AI unsupported', e)
 
 if __name__ == '__main__':
     print(PIf(PBinary('a', '=', 1), 'pass', 'pass'))

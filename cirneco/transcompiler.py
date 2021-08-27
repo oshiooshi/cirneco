@@ -133,3 +133,32 @@ class TransCompiler(ParseTreeVisitor):
 
     def acceptPass(self, tree: ParseTree):
         return self.ast.PStatement('pass')
+
+    def acceptNLP(self, tree: ParseTree):
+        ss = []
+        vars = {}
+        index = 0
+        for t in tree:
+            tag = t.getTag()
+            if tag == 'NLPChunk' or tag == 'UName':
+                ss.append(str(t))
+            elif tag == 'Block':
+                block = self.visit(t)
+                return self.ast.NLPStatement(''.join(ss), vars, (block,))
+            else:
+                key = ('ABCDEFGHIJKLMN')[index]
+                key = f'<{key}>'
+                vars[key] = '('+str(fix(t))+')'
+                ss.append(key)
+                index += 1
+        return self.ast.NLPStatement(''.join(ss), vars)
+
+def fix(tree):
+    a = [tree.epos_]
+    for t in tree:
+        fix(t)
+        a.append(t.epos_)
+    for key in tree.keys():
+        a.append(fix(tree.get(key)).epos_)
+    tree.epos_ = max(a)
+    return tree

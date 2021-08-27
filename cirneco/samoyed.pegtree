@@ -37,6 +37,8 @@ INDENT       = '\n' [ \t　]+
 Statement =
     / PythonStatement
     / DNCL2Statement
+    / { Expression !HIRA #Expression } 
+    / NLPStatement
 
 /* DNCL2Statement */
 
@@ -47,7 +49,6 @@ DNCL2Statement =
     / DNCL2WhileStatement
     / DNCL2ReturnStatement
     / DNCL2PrintStatement
-    / { Expression #Expression } 
 
 
 // 表示する("")
@@ -149,6 +150,20 @@ DNCL2ReturnStatement = {
     "を返す"
     #Return
 } 
+
+/* NLPStatement */
+
+NLPStatement = {
+    (NLPChunk / Expression / ":" (Block / SingleBlock) )+   
+    #NLP
+}
+
+NLPChunk = {
+    (!Expression !LF !":" . )+ 
+    #NLPChunk
+}
+
+example NLPStatement,Statement もしa+1が偶数ならば
 
 /* PythonStatement */
 
