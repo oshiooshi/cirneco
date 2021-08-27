@@ -36,7 +36,7 @@ INDENT       = '\n' [ \t　]+
 
 Statement =
     / PythonStatement
-    / DNCLStatement
+    // / DNCLStatement
     / DNCL2Statement
 
 
@@ -56,12 +56,12 @@ Statement =
 // 標準出力
 // 「」を表示する, ""を表示する
 
-DNCLPrintStatement = {
-    ('「' / '"')
-    (expr: (Expressions / Expression) )? 
-    ('」' / '"') "を表示する"
-    #Expressions
-}
+// DNCLPrintStatement = {
+//     ('「' / '"')
+//     (expr: (Expressions / Expression) )? 
+//     ('」' / '"') "を表示する"
+//     #Expressions
+// }
 
 // 条件繰り返し
 // 前判定 <条件> の間, <処理> を繰り返す
@@ -78,11 +78,11 @@ DNCLPrintStatement = {
 // return 文
 // DNCL2と同じ
 
-DNCLReturnStatement = {
-    (expr: (Expressions / Expression) )? 
-    "を返す"
-    #Return
-}
+// DNCLReturnStatement = {
+//     (expr: (Expressions / Expression) )? 
+//     "を返す"
+//     #Return
+// }
 
 
 /* DNCL2Statement */
@@ -126,18 +126,22 @@ DNCL2ForRangeStatement = {
     each: Name "を"
     start: Expression "から" 
     end: Expression "まで"
-    step: Expression ("ずつ増やしながら繰り返す" / "ずつ減らしながら繰り返す")　":" 
+    step: Expression "ずつ" "増やしながら" "繰り返す" ":" 
     body: (Block / SingleBlock)
-    (else: ElseStatement)?
     #ForRange
+} / {   // 減少は別のタグ#ForRangeDecにする
+    each: Name "を"
+    start: Expression "から" 
+    end: Expression "まで" 
+    step: Expression "ずつ" "減らしながら" "繰り返す" ":"
+    body: (Block / SingleBlock)
+    #ForRangeDec
 }
 
 DNCL2ForStatement = {
-    each: Names 
-    "の要素"
-    list: Expression "について繰り返す" ":"
+    list: Expression "の要素"
+    each: Names "について" "繰り返す" ":"
     body: (Block / SingleBlock)
-    (else: DNCL2ElseStatement)?
     #For
 }
 
@@ -146,7 +150,7 @@ DNCL2ForStatement = {
 // <条件> の間繰り返す: <処理>
 
 DNCL2WhileStatement = {
-    cond: Expression "の間繰り返す" ":"
+    cond: Expression "の間" "繰り返す" ":"
     body: (Block / SingleBlock)
     (else: DNCL2ElseStatement)?
     #While
