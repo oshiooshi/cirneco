@@ -34,7 +34,7 @@ try:
         display = display_tree if '--tree' in option else None
         code = cc.generate(source, display=display)
         if '--code' in option: # ソースコードを表示する
-            print(repr(code))
+            print(code)
         # 実行する
         try:
             ipy = get_ipython()
