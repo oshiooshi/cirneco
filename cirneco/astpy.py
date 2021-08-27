@@ -243,13 +243,23 @@ class PStatement(PExpr):
             buffers.append(' ')
             self.params[0].emit(env, buffers)
 
+class PSource(PExpr):
+    def __init__(self, *es):
+        PExpr.__init__(self, '', tuple(e(x) for x in es))
+
+    def emit(self, env, buffers):
+        for i, p in enumerate(self.params):
+            if i > 0:
+                buffers.append('\n')
+            p.emit(env, buffers)
+
 class PBlock(PExpr):
     def __init__(self, *es):
         PExpr.__init__(self, '{}', tuple(e(x) for x in es))
 
     def emit(self, env, buffers):
         indent = env.get('@indent', '\n')
-        env['@indent'] = indent+'  '
+        env['@indent'] = indent+'\t'
         for i, p in enumerate(self.params):
             buffers.append(env['@indent'])
             p.emit(env, buffers)

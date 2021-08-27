@@ -34,17 +34,17 @@ try:
         display = display_tree if '--tree' in option else None
         code = cc.generate(source, display=display)
         if '--code' in option: # ソースコードを表示する
-            print(code)
+            print(repr(code))
         # 実行する
-        ipy = get_ipython()
-        expr = ipy.input_transformer_manager.transform_cell(code)
-        expr_ast = ipy.compile.ast_parse(expr)
-        expr_ast = ipy.transform_ast(expr_ast)
-        executable = ipy.compile(expr_ast, '', 'exec')
         try:
+            ipy = get_ipython()
+            expr = ipy.input_transformer_manager.transform_cell(code)
+            expr_ast = ipy.compile.ast_parse(expr)
+            expr_ast = ipy.transform_ast(expr_ast)
+            executable = ipy.compile(expr_ast, '', 'exec')
             exec(executable)
         except Exception as e:
-            print(code)
+            print(repr(code))
             print('エラー検出', e.__class__.__name__, repr(e))
             raise
 

@@ -9,7 +9,7 @@ class TransCompiler(ParseTreeVisitor):
         self.ast = ast
 
     def acceptSource(self, tree: ParseTree):
-        return self.acceptBlock(tree)
+        return self.ast.PSource(*[self.visit(t) for t in tree])
 
     # [#Expression e]
     def acceptExpression(self, tree: ParseTree):
