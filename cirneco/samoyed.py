@@ -53,7 +53,7 @@ except:
 
 def samoyed_cc(source: str):
     cc = Samoyed()
-    cc.generate(source)
+    return cc.generate(source)
 
 def demo():
     import IPython
