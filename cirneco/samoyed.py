@@ -61,7 +61,9 @@ def demo():
 
     def convert(text):
         with output.redirect_to_element('#output'):
+            print(text)
             text = samoyed_cc(text)
+            print(text)
             display(IPython.display.HTML(f'<textarea style="width: 48%; height:100px">{text}</textarea>'))
     
     output.register_callback('notebook.Convert', convert)
