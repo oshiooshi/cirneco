@@ -66,15 +66,28 @@ def demo():
     
     output.register_callback('notebook.Convert', convert)
 
-
-    js_code = '''
-    document.querySelector("#output-area").appendChild(document.createTextNode("hello world!"));
-    '''
-    display(IPython.display.Javascript(js_code))
-
-
-
-
+    display(IPython.display.HTML('''
+    <textarea id="input" style="float: left; width: 48%; height:100px"></textarea>
+    <div id="output">
+    <textarea style="width: 48%; height:100px"></textarea>
+    </div>
+    <script>
+      var timer = null;
+      document.getElementById('input').addEventListener('input', (e) => {
+        var text = e.srcElement.value;
+        if(timer !== null) {
+          console.log('clear');
+          clearTimeout(timer);
+        }
+        timer = setTimeout(() => {
+          var parent = document.getElementById('output');
+          parent.innerHTML='';
+          google.colab.kernel.invokeFunction('notebook.Convert', [text], {});
+          timer = null;
+        }, 1000);
+      });
+    </script>
+    '''))
 
 
 def main(argv):
