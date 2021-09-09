@@ -86,6 +86,14 @@ def demo():
           google.colab.kernel.invokeFunction('notebook.Convert', [text], {});
           timer = null;
         }, 1000);
+
+        timer = setTimeout(() => {
+          var parent = document.getElementById('output');
+          parent.innerHTML='';
+          google.colab.kernel.invokeFunction('notebook.Convert', [text], {});
+          timer = null;
+        }, 1000);
+                
       });
     </script>
     '''))
