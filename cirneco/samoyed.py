@@ -67,7 +67,7 @@ def demo():
     output.register_callback('notebook.Convert', convert)
 
     display(IPython.display.HTML('''
-    <h1>ノーマルキャット</h1>
+    <li> Another item</li>
     <textarea id="input" style="float: left; width: 48%; height:100px"></textarea>
     <div id="output">
     <textarea style="width: 48%; height:100px"></textarea>
