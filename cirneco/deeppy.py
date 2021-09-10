@@ -36,8 +36,7 @@ parser = pg.generate(peg, start='NLStatement')
 def fix(tree):
     a = [tree.epos_]
     for t in tree:
-        fix(t)
-        a.append(t.epos_)
+        a.append(fix(t).epos_)
     for key in tree.keys():
         a.append(fix(tree.get(key)).epos_)
     tree.epos_ = max(a)
@@ -78,20 +77,28 @@ def start_demo(model='model.pt', src_vocab='japanese.pt', tgt_vocab='python.pt')
     nmt = PyNMT(model, src_vocab, tgt_vocab)
     translate(nmt, 'もしa+1が偶数ならば')
 
-    def convert(text):
+    def convertOLD(text):
         with output.redirect_to_element('#output'):
             try:
                 text = translate(nmt, text)
             except Exception as e:
                 print(e)
             display(IPython.display.HTML(f'<textarea style="width: 48%; height:100px">{text}</textarea>'))
-    
+
+    def convert(text):
+        try:
+            text = translate(nmt, text)
+            return IPython.display.JSON({'result': text})
+        except Exception as e:
+            print(e)
+        return e
+
     output.register_callback('notebook.Convert', convert)
 
     display(IPython.display.HTML('''
     <textarea id="input" style="float: left; width: 48%; height:100px"></textarea>
     <div id="output">
-    <textarea style="width: 48%; height:100px"></textarea>
+    <textarea id="output2" style="width: 48%; height:100px"></textarea>
     </div>
     <script>
       var timer = null;
@@ -102,9 +109,14 @@ def start_demo(model='model.pt', src_vocab='japanese.pt', tgt_vocab='python.pt')
           clearTimeout(timer);
         }
         timer = setTimeout(() => {
-          var parent = document.getElementById('output');
-          parent.innerHTML='';
-          google.colab.kernel.invokeFunction('notebook.Convert', [text], {});
+        //   var parent = document.getElementById('output');
+        //   parent.innerHTML='';
+          (async function() {
+              const result = await google.colab.kernel.invokeFunction('notebook.Convert', [text], {});
+              const data = result.data['application/json'];
+              const textarea = document.getElementById('output2');
+              textarea.textContent = data.result;
+           })();
           timer = null;
         }, 400);
       });
