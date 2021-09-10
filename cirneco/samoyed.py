@@ -34,7 +34,7 @@ try:
         display = display_tree if '--tree' in option else None
         code = cc.generate(source, display=display)
         if '--code' in option: # ソースコードを表示する
-            print(code)
+            print("!!!!!!!")
         # 実行する
         try:
             ipy = get_ipython()
@@ -68,8 +68,9 @@ def demo():
 
     display(IPython.display.HTML('''
     <textarea id="input" style="float: left; width: 48%; height:100px"></textarea>
-
-    <textarea id="output" style="width: 48%; height:100px"></textarea>
+    <div id="output">
+    <textarea style="width: 48%; height:100px"></textarea>
+    </div>
     <script>
       var timer = null;
       document.getElementById('input').addEventListener('input', (e) => {
