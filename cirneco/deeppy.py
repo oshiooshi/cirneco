@@ -96,9 +96,9 @@ def start_demo(model='model.pt', src_vocab='japanese.pt', tgt_vocab='python.pt')
     output.register_callback('notebook.Convert', convert)
 
     display(IPython.display.HTML('''
-    <textarea id="input" style="float: left; width: 48%; height:100px"></textarea>
+    <textarea id="input" style="float: left; width: 48%; height:100px; font-size: large;"></textarea>
     <div id="output">
-    <textarea id="output2" style="width: 48%; height:100px"></textarea>
+    <textarea id="output2" style="width: 48%; height:100px; font-size: large;"></textarea>
     </div>
     <script>
       var timer = null;
