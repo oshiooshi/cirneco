@@ -68,9 +68,8 @@ def demo():
 
     display(IPython.display.HTML('''
     <textarea id="input" style="float: left; width: 48%; height:100px"></textarea>
-    <div id="output">
-    <textarea style="width: 48%; height:100px"></textarea>
-    </div>
+
+    <textarea id="output" style="width: 48%; height:100px"></textarea>
     <script>
       var timer = null;
       document.getElementById('input').addEventListener('input', (e) => {
