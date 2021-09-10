@@ -16,6 +16,7 @@ def deeppy(text):
             if len(statement) > 0:
                 options = []
                 ss.append((statement, options))
+    return ss
         
 def filter_options(options):
     ss = []
@@ -67,7 +68,7 @@ def translate(nmt, s):
         for key in vars:
             s = s.replace(key, vars[key])
         ss.append(s)
-    return '\n'.append(ss)
+    return '\n'.join(ss)
 
 
 def start_demo(model='model.pt', src_vocab='japanese.pt', tgt_vocab='python.pt'):
@@ -75,10 +76,14 @@ def start_demo(model='model.pt', src_vocab='japanese.pt', tgt_vocab='python.pt')
     from google.colab import output
 
     nmt = PyNMT(model, src_vocab, tgt_vocab)
+    translate(nmt, 'もしa+1が偶数ならば')
 
     def convert(text):
         with output.redirect_to_element('#output'):
-            text = translate(nmt, text)
+            try:
+                text = translate(nmt, text)
+            except Exception as e:
+                print(e)
             display(IPython.display.HTML(f'<textarea style="width: 48%; height:100px">{text}</textarea>'))
     
     output.register_callback('notebook.Convert', convert)
@@ -101,7 +106,7 @@ def start_demo(model='model.pt', src_vocab='japanese.pt', tgt_vocab='python.pt')
           parent.innerHTML='';
           google.colab.kernel.invokeFunction('notebook.Convert', [text], {});
           timer = null;
-        }, 1000);
+        }, 400);
       });
     </script>
     '''))
