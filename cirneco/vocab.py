@@ -25,7 +25,10 @@ def save_vocab(vocab_obj, basename='untitled'):
     torch.save(vocab_obj, f'{basename}_vocab.pt')
 
 def load_vocab(basename='untitled'):
-    v = torch.load(f'{basename}_vocab.pt')
+    if '.' in basename:
+        v = torch.load(basename)
+    else:
+        v = torch.load(f'{basename}_vocab.pt')
     return v
 
 def tokenizer_from_vocab(vocab):
