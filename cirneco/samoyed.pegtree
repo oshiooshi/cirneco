@@ -153,6 +153,16 @@ DNCL2ReturnStatement = {
 
 /* NLPStatement */
 
+NLStatement = {   // フラット
+    (NLChunk / Expression )+   
+    #NLP
+}
+
+NLChunk = {
+    (!Expression . )+ 
+    #NLPChunk
+}
+
 NLPStatement = {
     (NLPChunk / Expression / ":" (Block / SingleBlock) )+   
     #NLP

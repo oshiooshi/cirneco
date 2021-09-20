@@ -174,6 +174,7 @@ def greedy_decode(model, src, src_mask, max_len, beamsize, start_symbol):
             break
     return ys
 
+
 class NMT(object):
     src_vocab: object
     tgt_vocab: object
@@ -215,7 +216,6 @@ class NMT(object):
         # オプティマイザの定義 (Adam)
         self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9)
 
-
     def load(self, filename='all-model.pt'):
         self.transformer.load_state_dict(torch.load(filename, map_location=DEVICE))        
 
@@ -227,6 +227,21 @@ class NMT(object):
         tgt_tokens = greedy_decode(
             self.transformer,  src, src_mask, max_len=num_tokens + 5, beamsize=5, start_symbol=SOS_IDX).flatten()
         return " ".join(self.tgt_vocab.lookup_tokens(list(tgt_tokens.cpu().numpy()))).replace("<sos>", "").replace("<eos>", "")
+
+    def translate_beam(self, src_sentence: str):
+        """
+        複数の翻訳候補をリストで返す。
+        """
+        ss = []
+        ## 
+        return ss
+
+
+def PyNMT(model='model.pt', src_vocab='japanese.pt', tgt_vocab='python.pt'):
+    nmt = NMT(src_vocab, tgt_vocab)
+    nmt.load(model)
+    return nmt
+
 
 if __name__ == '__main__':
     nmt = NMT()

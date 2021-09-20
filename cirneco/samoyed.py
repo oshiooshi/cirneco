@@ -20,7 +20,7 @@ class Samoyed(TransCompiler):
 
 try:
     from IPython.display import SVG, display
-    from IPython.core.magic import register_cell_magic, register_line_cell_magic
+    from IPython.core.magic import register_cell_magic
     import pegtree.graph as graph
 
     def display_tree(tree):
