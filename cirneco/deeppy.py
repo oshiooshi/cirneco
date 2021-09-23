@@ -2,22 +2,32 @@ import pegtree as pg
 import re
 from nmt import PyNMT
 
+
 def deeppy(text):
     ss = []
     for line in text.split('\n'):
+        print("line", line)
         # A そこで、B はオプション形式
         matched = re.findall('(.*)(そこで、|そのとき、|ここで、|さらに)(.*)', text)
+        print("matched", matched)
         if len(matched) > 0:
             statement = matched[0][0]
+            print("statement", statement)
             options = matched[0][2].split('。')
+            print("options", options)
             ss.append((statement, filter_options(options)))
+            print("\n\n")
             continue
+
         for statement in line.split('。'):
             if len(statement) > 0:
                 options = []
                 ss.append((statement, options))
-    return ss
+                
         
+    return ss
+    
+    
 def filter_options(options):
     ss = []
     for option in options:
@@ -26,6 +36,7 @@ def filter_options(options):
         if option.endswith('ことにする'):
             option = option[:-5]
         ss.append('そこで、'+option)
+        print("ss", ss)
     return ss
 
 ## 前処理
